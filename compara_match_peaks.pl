@@ -27,9 +27,11 @@
 use autodie;
 
 # Current perl api version 70
-use lib "/hpf/projects/mdwilson/lib/comparaAPI/compara70/ensembl/modules";
-use lib "/hpf/projects/mdwilson/lib/comparaAPI/compara70/ensembl-compara/modules";
-use lib "/hpf/projects/mdwilson/lib/bioperl-1.2.3";
+# Target libraries included in lib folder. Set path accordingly
+use lib "/hpf/projects/mdwilson/scripts/Compara/scripts/lib/compara70/ensembl/modules";
+use lib "/hpf/projects/mdwilson/scripts/Compara/scripts/lib/compara70/ensembl-compara/modules";
+use lib "/hpf/projects/mdwilson/scripts/Compara/scripts/lib/bioperl-1.2.3";
+use lib "/hpf/projects/mdwilson/scripts/Compara/scripts/lib/";
 
 use Getopt::Long;
 use Bio::EnsEMBL::Registry;

@@ -9,17 +9,20 @@
 ## It will generate text files with commands that can subsequently be submitted
 ## to the cluster
 
+my $path = "/hpf/largeprojects/mdwilson/scripts/Compara/scripts";
+
+use lib "$path/lib/";
 use strict;
 use Getopt::Long;
 use Cwd;
 use Cwd 'abs_path';
 use File::Path 'make_path';
 
+
 my $cwd = getcwd();
 my $outdir = "$cwd";
 my $inputFile;
 my $help;
-my $path = "/hpf/largeprojects/mdwilson/scripts/Compara/scripts";
 my $out_species;
 my %species_names;
 my $is_gff;
@@ -41,7 +44,7 @@ GetOptions
      "a=s" => \$alignment,
      "mmr=s" =>\$mmr,
      "p=s" => \$do_paralogs,
-     "q=s" => \$auto_queue,
+     "q" => \$auto_queue,
      "p_spec=s" => \$priority_species,
      "cmd=s" => \$command_prefix
      )
@@ -65,8 +68,8 @@ my $helpmsg = join ("\n",
 #		    "\t-is_gff\t\t\tPeak files are in .gff format and do not require conversion. False by default",
 		    "\t-a alignment\t\tAlignment mode to run Compara [EPO|PECAN]. EPO by default",
 		    "\t-mmr max:min\t\tMax:Min ratios for peak overlaps. Default 0:1",
-		    "\t-p do_paralogs\t\t[TRUE] Determines if R component runs paralog analysis. FALSE by default",
-		    "\t-q auto_queue\t\t[FALSE] Determines if compara perl commands are sent to qsub. TRUE by default",
+		    "\t-p do_paralogs\t\t[TRUE|FALSE] Determines if R component runs paralog analysis. FALSE by default",
+		    "\t-q auto_queue\t\tDetermines if compara perl commands are sent to qsub. FALSE by default",
 		    "\t-cmd command prefix\tCommand prefix for all compara commands (essential source commands, etc.)",
 		    "\t-out_spec out_species\t\tComma delimited list of output species. Equal to input species by default",
 		    "\t-p_spec priority_species\t\tName of species that should always comes first in Compara output",
@@ -75,13 +78,13 @@ my $helpmsg = join ("\n",
 		    "Priority species first + alphabetized > alphabetized input species order (Default)\n"
     );
 
-if ($help || (not defined $inputFile) || ($alignment && $alignment != "EPO" && $alignment ne "PECAN") || ($do_paralogs ne "FALSE" && $do_paralogs ne "TRUE") || ($auto_queue && $auto_queue ne "FALSE"))
+if ($help || (not defined $inputFile) || ($alignment && $alignment != "EPO" && $alignment ne "PECAN") || ($do_paralogs ne "FALSE" && $do_paralogs ne "TRUE"))
 {
     print $helpmsg;
     exit;
 };
-## Auto queueing of commands is set on by default, unless specified as "FALSE"
-$auto_queue = $command_prefix unless $auto_queue == "FALSE";
+## Auto queueing of commands occurs only if specified as TRUE
+$auto_queue = $command_prefix if $auto_queue;
 
 $outdir = abs_path($outdir);
 
