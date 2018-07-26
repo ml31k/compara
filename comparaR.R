@@ -141,6 +141,6 @@ compara.out.list <- lapply(species.list, function(a.species){ ## Process and for
 
 for(one.species in species.list){
     write.table(x=compara.out.list[[one.species]],
-                file=paste0(tf,"max",maxgap,"min",minovl,"_peakConservation",one.species,".txt"),
+                file=paste0(tf,"max",maxgap,"min",minovl,"_peakConservation_",matchType,"_",one.species,".txt"),
                 row.names=F, quote=F, sep="\t")
 }
