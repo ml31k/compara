@@ -9,7 +9,7 @@ stitchbp = 2 ## Compara often reports regions with small gaps. Regions separated
 
 args <- commandArgs(trailingOnly=TRUE)
 
-#args <- "~/mdwilson/mliang/projects/ChIP_exo_mm10_20160430/data/GEM_peaks/GEMbed/compara/CEBPA/rscript_instructions.txt"
+## args <- c("~/mdwilson/mliang/projects/ChIP_exo_mm10_20160430/data/GEM_peaks/GEMbed/compara/CEBPA/rscript_instructions.txt", "L")
 
 if(length(args)==0){
     print(helpmsg)
@@ -32,7 +32,7 @@ if(is.null(matchType) | is.na(matchType)){
     print("matchType specified as 'S': Matching in (S)trict mode")
 } else {
     print(helpmsg)
-    stop("unrecognized matchType")
+    stop("unrecognized matchType != [L|P|S]")
 }
 
 
@@ -138,6 +138,7 @@ compara.out.list <- lapply(species.list, function(a.species){ ## Process and for
     out$rejected.ranges <- NA
     return(cbind(out, matched.compara.list[[a.species]]))
 })
+names(compara.out.list) <- species.list
 
 for(one.species in species.list){
     write.table(x=compara.out.list[[one.species]],
