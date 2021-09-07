@@ -9,7 +9,7 @@ stitchbp = 2 ## Compara often reports regions with small gaps. Regions separated
 
 args <- commandArgs(trailingOnly=TRUE)
 
-## args <- c("~/mdwilson/mliang/projects/ChIP_exo_mm10_20160430/data/GEM_peaks/GEMbed/compara/CEBPA/rscript_instructions.txt", "L")
+##args <- c("~/mdwilson/mliang/projects/ChIP_exo_20210722/results/ChExMix_peaks/compara/CEBPA/rscript_instructions.txt", "S")
 
 if(length(args)==0){
     print(helpmsg)
@@ -123,6 +123,7 @@ matched.compara.list <- lapply(species.list, function(origin.species){ ## Perfor
         merged.ol <- unique(rbind(ori.lift2.other.ol, other.lift2.ori.ol))
         
         out <- rep("X", length(original.peaks[[origin.species]])) ## All peaks are marked as X by default
+        out[which(width(list.of.compara[[origin.species]][[other.species]][[1]])==0)] = "D" ## Matched deletion regions are marked as D
         out[sum(width(list.of.compara[[origin.species]][[other.species]]) > 0) >=1] <- "0" ## Those that matching a non-dummy region are recorded as 0
         out[conserved.pks] <- sapply(conserved.pks, function(a.pk){ ## Those matching one or more regions have the full region(s) reported
             paste(unique(subset(merged.ol, queryHits==a.pk)$oripk), collapse=":")
