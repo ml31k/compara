@@ -9,7 +9,7 @@ stitchbp = 2 ## Compara often reports regions with small gaps. Regions separated
 
 args <- commandArgs(trailingOnly=TRUE)
 
-args <- c("~/mdwilson/mliang/projects/ChIP_exo_20210722/results/ChExMix_peaks/compara/CEBPA/rscript_instructions.txt", "S")
+##args <- c("~/mdwilson/mliang/projects/ChIP_exo_20210722/results/ChExMix_peaks/compara/CEBPA/rscript_instructions.txt", "S")
 
 if(length(args)==0){
     print(helpmsg)
