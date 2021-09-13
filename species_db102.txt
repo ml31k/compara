@@ -1,0 +1,13 @@
+human;hsa;hsap;	homo_sapiens
+macaque;mmul;mml;	macaca_mulatta
+chimp;	pan_troglodytes
+orangutan;	pongo_pygmaeus
+gorilla;	gorilla_gorilla
+marmoset;	callithrix_jacchus
+mouse;mmus;mmu;	mus_musculus
+rat;rno;rnor;	rattus_norvegicus
+dog;cfam;cfa;canfam;	canis_lupus_familiaris
+chicken;	gallus_gallus
+cow;btau;	bos_taurus
+nmr;HetGla;	heterocephalus_glaber_female
+pig;sscr	sus_scrofa
