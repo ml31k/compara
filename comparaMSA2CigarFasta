@@ -1,0 +1,33 @@
+#!/bin/awk -f 
+
+BEGIN{FS="[:-]"; minK=ARGV[2]}
+
+$1~/^>/{sourcePk = $1; next};
+$1~".NA."||NF==0{next};
+
+{
+outName = sourcePk"_"$1;
+CIGAR = "";
+outSeq = "";
+for(i=2; i<=NF; i++){
+	if($i == "" && i < NF){
+	      DEL ++
+	} else if ($i == "" && i == NF) {
+	      CIGAR = CIGAR"D"DEL
+	      DEL = 0
+	} else {
+	      
+	      if(DEL > 0){
+	      	     CIGAR = CIGAR"D"DEL
+	      }
+	      DEL = 1
+	      CIGAR = CIGAR"M"length($i) 
+	      outSeq = outSeq""$i
+	}
+}
+if(length(outSeq) > minK){
+	print outName"_"CIGAR;
+	print outSeq;
+}
+DEL = 0
+}
