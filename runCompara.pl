@@ -24,8 +24,8 @@ my $outdir = "$cwd";
 my $inputFile;
 my $help;
 my $out_species;
+my $ensembl_version;
 my %species_names;
-my $is_gff;
 my $alignment = "EPO";
 my $mmr = "0:1";
 my $do_paralogs = "FALSE";
@@ -40,13 +40,13 @@ GetOptions
      "i=s" => \$inputFile,
      "o=s" => \$outdir,
      "out_spec=s" => \$out_species,
-#     "is_gff" => \$is_gff,
      "a=s" => \$alignment,
      "mmr=s" =>\$mmr,
      "p=s" => \$do_paralogs,
      "q" => \$auto_queue,
      "p_spec=s" => \$priority_species,
-     "cmd=s" => \$command_prefix
+     "cmd=s" => \$command_prefix,
+     "v=s" => \$ensembl_version
      )
     or die ("invalid commandline args\n");
 
@@ -73,6 +73,7 @@ my $helpmsg = join ("\n",
 		    "\t-cmd command prefix\tCommand prefix for all compara commands (essential source commands, etc.)",
 		    "\t-out_spec out_species\t\tComma delimited list of output species. Equal to input species by default",
 		    "\t-p_spec priority_species\t\tName of species that should always comes first in Compara output",
+		    "\t-v ensembl_version\tVersion of ensembl to use (70 by default)",
 		    "",
 		    "Output_species_order: Custom order spec. by -out_spec >",
 		    "Priority species first + alphabetized > alphabetized input species order (Default)\n"
@@ -96,7 +97,7 @@ unless ( -e $outdir )
 ## Loads the species database and common name conversion table. This file is found in
 ## the compara directory and can be edited to add new species/shorthand. Be sure to use
 ## the correct database name for compara and seperate all shorthands with a ;
-open SPECIES_DB, $path."/species_db.txt" or die ("couldn't load species names!\n");
+open SPECIES_DB, $path."/species_db".$ensembl_version.".txt" or die ("couldn't load species names!\n");
 while (<SPECIES_DB>)
 {
     chomp();
@@ -196,18 +197,23 @@ for my $ID (keys %hash_by_IDs)
 	my $fileOut =  $ID."_".$spec_and_file->[0];      
 	
 	## Link peaks if gff, else generate gff files. named: Species_db_name_ID.gff
-	if ($is_gff)
-	{
-	    system ("ln -s $peakFileIn $outdir/$ID/peaks/$fileOut.gff") == 0 or die ("failed to link $peakFileIn\n"); 
-	}
-	else
-	{
-	    &makeGFF ($peakFileIn, "$outdir/$ID/peaks/$fileOut.gff");
-	};
+#	if ($is_gff)
+#	{
+#	    system ("ln -s $peakFileIn $outdir/$ID/peaks/$fileOut.gff") == 0 or die ("failed to link $peakFileIn\n"); 
+#	}
+#	else
+#	{
+	&makeGFF ($peakFileIn, "$outdir/$ID/peaks/$fileOut.gff");
+#	};
 	
+	my $compara_version = "compara_match_peaks.pl";
+	if($ensembl_version)
+	{
+	    $compara_version = "compara_match_peaks_".$ensembl_version.".pl"
+	}
 	## Generate command to run compara:
 	print CMD_OUT ("$command_prefix ",
-		       "cd $outdir ; $path/compara_match_peaks.pl ",
+		       "cd $outdir ; $path/$compara_version ",
 		       "-i $outdir/$ID/peaks/$fileOut.gff ",
 		       "-o $outdir/$fileOut.compara.regions ",
 		       "-q $outdir/$fileOut.MSA.sequences ",
@@ -268,7 +274,7 @@ sub makeGFF
 ## Arguments: path_to_peak path_to_output
 {
     print STDERR "Generating $_[1]\n";
-    system ("awk '\$1!~\"_\"&&\$1!~\"#\"{z=\$1\":\"\$2\"-\"\$3; gsub(\"M\", \"MT\"); gsub(\"chr\", \"\"); print \$1\"\\t\"\$2\"\\t\"\$3\"\\t\"z}' $_[0] | sort -k1,1 -k2,2n | uniq > $_[1]") 
+    system ("sed 's/\r//g' $_[0] | awk '\$1!~\"_\"&&\$1!~\"#\"&&\$2!~/[^0-9]/&&\$3!~/[^0-9]/{z=\$1\":\"\$2\"-\"\$3; gsub(\"M\", \"MT\"); gsub(\"chr\", \"\"); print \$1\"\\t\"\$2\"\\t\"\$3\"\\t\"z}' | sort -k1,1 -k2,2n | uniq > $_[1]") 
 	== 0 or die ("failed to generate gff for $_[1]");
     return 1;
 };

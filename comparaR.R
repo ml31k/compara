@@ -54,35 +54,53 @@ list.of.compara <- lapply(species.list, function(a.species){ ## Format the compa
         print(other.species)
         other.species.regions <- a.compara.tab[,other.species]
         names(other.species.regions) <- a.compara.tab$X.Original_peak
-        lifted.peaks <- split(rep(GRanges(seqnames="chr0",ranges=IRanges(1,0)), ## Using GRangesList greatly speeds up runtime. Allows GRanges of different lengths
-                                  nrow(a.compara.tab)),1:nrow(a.compara.tab))   ## Requires "NA" regions to be filled with a dummy GRanges object
-        single.regions <- t(sapply(other.species.regions[which(!grepl(":", other.species.regions) & ## Quick processing of all single-matched regions into GRanges object
-                                                             !is.na(other.species.regions))], function(x){
-                                                                 unlist(strsplit(x, "\\."))[2:4]
-                                                             }))
-        single.ranges <- GRanges(seqnames=single.regions[,1],
-                                 ranges=IRanges(as.numeric(single.regions[,2]),as.numeric(single.regions[,3])))                                                             
-        lifted.peaks[which(!grepl(":", other.species.regions) & !is.na(other.species.regions))] <- 
-            split(single.ranges, 1:length(single.ranges))
-        multi.regions <- do.call(rbind, ## Process multi-mapped regions into GRanges object
-                                 lapply(names(other.species.regions)[which(grepl(":", other.species.regions))],
-                                        function(a.name){
-                                            a.region <- other.species.regions[a.name]
-                                            out <- matrix(unlist(strsplit(a.region,"[\\.:]")),ncol=4, byrow=T)
-                                            out <- cbind(out, rep(a.name, nrow(out)))
-                                        }))
-        multi.ranges <- GRanges(seqnames=multi.regions[,2], oripk = multi.regions[,5], ## Stitch small-gapped ranges together
-                                ranges=IRanges(as.numeric(multi.regions[,3]), as.numeric(multi.regions[,4])))
-        lifted.peaks[which(grepl(":", other.species.regions))] <-
-            multi.reduced <- reduce(split(multi.ranges, multi.ranges$oripk), min.gapwidth=stitchbp)
-            
+        lifted.peaks = GRanges(seqnames=rep("chr0", nrow(a.compara.tab)),ranges=IRanges(1,0)) ## Dummy regions
+        single.regions = which(!grepl(":", other.species.regions) & !is.na(other.species.regions))
+        single.regions.tab = matrix(unlist(strsplit(as.character(other.species.regions[single.regions]), "\\.")),
+                                    ncol = 4, byrow=TRUE)
+        lifted.peaks[single.regions] = GRanges(seqnames=single.regions.tab[,2],
+                                               ranges=IRanges(as.numeric(single.regions.tab[,3]),
+                                                              as.numeric(single.regions.tab[,4])))
+
+        multi.regions = which(grepl(":", other.species.regions))
+        if(length(multi.regions > 1)){
+            multi.granges = do.call(c, lapply(as.character(other.species.regions[multi.regions]), function(x){
+                mini.tab = matrix(unlist(strsplit(x, "[:\\.]")), ncol=4, byrow=TRUE)
+                mini.grange = GRanges(seqnames=mini.tab[,2],
+                                      ranges=IRanges(as.numeric(mini.tab[,3]),
+                                                     as.numeric(mini.tab[,4])))
+                mini.grange = reduce(mini.grange, min.gapwidth = stitchbp)
+                return(mini.grange[which.max(width(mini.grange))])
+            }))
+            lifted.peaks[multi.regions] = multi.granges
+        }        
+#       lifted.peaks <- split(rep(GRanges(seqnames="chr0",ranges=IRanges(1,0)), 
+#                                 nrow(a.compara.tab)),1:nrow(a.compara.tab))   
+#       single.regions <- t(sapply(other.species.regions[which(!grepl(":", other.species.regions) & 
+#                                                            !is.na(other.species.regions))], function(x){
+#                                                                unlist(strsplit(x, "\\."))[2:4]
+#                                                            }))
+#       single.ranges <- GRanges(seqnames=single.regions[,1],
+#                                ranges=IRanges(as.numeric(single.regions[,2]),as.numeric(single.regions[,3])))
+#       lifted.peaks[which(!grepl(":", other.species.regions) & !is.na(other.species.regions))] <- 
+#            split(single.ranges, 1:length(single.ranges))
+#        multi.regions <- do.call(rbind, ## Process multi-mapped regions into GRanges object
+#                                 lapply(names(other.species.regions)[which(grepl(":", other.species.regions))],
+#                                        function(a.name){
+#                                            a.region <- other.species.regions[a.name]
+#                                            out <- matrix(unlist(strsplit(a.region,"[\\.:]")),ncol=4, byrow=T)
+#                                            out <- cbind(out, rep(a.name, nrow(out)))
+#                                        }))
+#        multi.ranges <- GRanges(seqnames=multi.regions[,2], oripk = multi.regions[,5], ## Stitch small-gapped ranges together
+#                                ranges=IRanges(as.numeric(multi.regions[,3]), as.numeric(multi.regions[,4])))
+#        lifted.peaks[which(grepl(":", other.species.regions))] <-
+#            multi.reduced <- reduce(split(multi.ranges, multi.ranges$oripk), min.gapwidth=stitchbp)            
         names(lifted.peaks) <- a.compara.tab$X.Original_peak
         return(lifted.peaks)        
     })
     names(a.compara.GR.tab) <- species.list
     return(a.compara.GR.tab)
 })
-
 names(list.of.compara) <- species.list
 
 original.peaks <- lapply(species.list, function(a.species){ ## Read in original peak file. Order is the same as in the compara_regions file
@@ -97,40 +115,45 @@ matched.compara.list <- lapply(species.list, function(origin.species){ ## Perfor
         print(paste("Matching peaks between",origin.species, other.species))
 
         ## Lift the anchor species coords into the other species coords and match against other species peak
-        ori.lift2.other.ol <- as.data.frame(findOverlaps(list.of.compara[[origin.species]][[other.species]],
-                                                         original.peaks[[other.species]], maxgap=maxgap, minoverlap=minovl))
-        ori.lift2.other.ol$oripk <- paste0(other.species, ".",
-                                           original.peaks[[other.species]]$oripk[ori.lift2.other.ol$subjectHits])
+        ori.lift2.other.ol = data.frame(queryHits = findOverlaps(list.of.compara[[origin.species]][[other.species]],
+                                                                 original.peaks[[other.species]],
+                                                                 minoverlap=minovl, select="first"))
+        ori.lift2.other.ol$oriPk =
+            paste0(other.species, ".", original.peaks[[other.species]]$oripk[ori.lift2.other.ol$queryHits])            
+        row.names(ori.lift2.other.ol) = names(list.of.compara[[origin.species]][[origin.species]])
+        
         ## Lift the other species coords into the anchor species coords and match against anchor species peak
-        other.lift2.ori.ol <- as.data.frame(findOverlaps(original.peaks[[origin.species]],
-                                                         list.of.compara[[other.species]][[origin.species]],
-                                                         maxgap=maxgap, minoverlap=minovl))
-        other.lift2.ori.ol$oripk <- names(list.of.compara[[other.species]][[origin.species]])[other.lift2.ori.ol$subjectHits]
+        other.lift2.ori.ol <- data.frame(queryHits = findOverlaps(original.peaks[[origin.species]],
+                                                                  list.of.compara[[other.species]][[origin.species]],
+                                                                  minoverlap=minovl, select="first"))
+        other.lift2.ori.ol$oriPk = names(list.of.compara[[other.species]][[origin.species]])[other.lift2.ori.ol$queryHits]
+        row.names(other.lift2.ori.ol) = row.names(ori.lift2.other.ol)
 
         ## Note that the coords for all matching hits are retained (ie paralogues are also reported)        
 
         if(matchType == "S"){
             ## Strict: A peak must be conserved from both perspectives to be reported as conserved
-            conserved.pks <- intersect(ori.lift2.other.ol$queryHits, other.lift2.ori.ol$queryHits)
+            ## conserved.pks <- intersect(ori.lift2.other.ol$queryHits, other.lift2.ori.ol$queryHits)
+            conserved.pks = intersect(row.names(na.omit(ori.lift2.other.ol)),
+                                      row.names(na.omit(other.lift2.ori.ol)))
         } else if (matchType == "P") {
             ## Permissive: A peak needs only be conserved from one species perspective
-            conserved.pks <- unique(c(ori.lift2.other.ol$queryHits, other.lift2.ori.ol$queryHits))
+            ## conserved.pks <- unique(c(ori.lift2.other.ol$queryHits, other.lift2.ori.ol$queryHits))
+            conserved.pks = union(row.names(na.omit(ori.lift2.other.ol)),
+                                  row.names(na.omit(other.lift2.ori.ol)))
         } else if (matchType == "L") {
             ## Legacy mode: A peak must be conserved from the other species perspective (compare Anchor against lifted other species coords)
-            conserved.pks <- other.lift2.ori.ol$queryHits
+            conserved.pks <- row.names(na.omit(other.lift2.ori.ol))
         }
-
-        ## Combine the overlaps for easy processing
-        merged.ol <- unique(rbind(ori.lift2.other.ol, other.lift2.ori.ol))
         
         out <- rep("X", length(original.peaks[[origin.species]])) ## All peaks are marked as X by default
-        out[which(sapply(width(list.of.compara[[origin.species]][[other.species]]), function(x) x[1] == 0) &
-                  sapply(seqnames(list.of.compara[[origin.species]][[other.species]]), function(x) x@values[1]!="chr0"))] = "D"
+        names(out) = paste0(origin.species, ".", original.peaks[[origin.species]]$oripk)
+        out[which(width(list.of.compara[[origin.species]][[other.species]]) == 0 &
+                  seqnames(list.of.compara[[origin.species]][[other.species]]) != "chr0")] = "D"
         ## Matched deletion regions are marked as D
-        out[sum(width(list.of.compara[[origin.species]][[other.species]]) > 0) >=1] <- "0" ## Those that matching a non-dummy region are recorded as 0
-        out[conserved.pks] <- sapply(conserved.pks, function(a.pk){ ## Those matching one or more regions have the full region(s) reported
-            paste(unique(subset(merged.ol, queryHits==a.pk)$oripk), collapse=":")
-        })
+        out[width(list.of.compara[[origin.species]][[other.species]]) > 0] = "0"
+        ## Those that matching a non-dummy region are recorded as 0
+        out[conserved.pks] <- other.lift2.ori.ol[conserved.pks,]$oriPk
         return(out)
     })
 })
